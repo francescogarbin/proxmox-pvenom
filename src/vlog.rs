@@ -19,8 +19,8 @@ pub enum LogLevel {
     Error = 3,
 }
 
-static CURRENT_LEVEL: AtomicU8 = AtomicU8::new(LogLevel::Info as u8);
-
+static CURRENT_LEVEL: AtomicU8 = AtomicU8::new(LogLevel::Debug as u8);
+    
 pub fn set_level(level: LogLevel) {
     CURRENT_LEVEL.store(level as u8, Ordering::Relaxed);
 }

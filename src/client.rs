@@ -9,17 +9,17 @@ use crate::{vlog_debug, vlog_info, vlog_error};
 pub struct ProxmoxClient {
     base_url: String,
     client: Client,
-    csrf_token: String,
+    ticket: String,           // PVEAuthCookie - usato in TUTTE le richieste
+    csrf_token: String,       // CSRFPreventionToken - usato solo in POST/PUT/DELETE
 }
 
 impl ProxmoxClient {
     pub async fn new(base_url: &str, username: &str, password: &str, insecure: bool) -> Result<Self> {
         vlog_debug!("Creating Proxmox client for {}", base_url);
 
-        // Build HTTP client with cookie jar
+        // Build HTTP client
         let client = ClientBuilder::new()
             .danger_accept_invalid_certs(insecure)
-            .cookie_store(true)
             .timeout(std::time::Duration::from_secs(30))
             .build()
             .context("Failed to build HTTP client")?;
@@ -50,20 +50,10 @@ impl ProxmoxClient {
 
         vlog_debug!("Received authentication ticket for user: {}", auth_response.data.username);
 
-        // Set the cookie manually (PVEAuthCookie)
-        let cookie_url = format!("{}/api2/json/", base_url);
-        let cookie_value = format!("PVEAuthCookie={}", auth_response.data.ticket);
-
-        // Make a dummy request to set the cookie in the jar
-        let _ = client
-            .get(&cookie_url)
-            .header("Cookie", cookie_value)
-            .send()
-            .await;
-
         Ok(Self {
             base_url: base_url.to_string(),
             client,
+            ticket: auth_response.data.ticket,
             csrf_token: auth_response.data.csrf_token,
         })
     }
@@ -72,8 +62,12 @@ impl ProxmoxClient {
         let url = format!("{}{}", self.base_url, path);
         vlog_debug!("GET {}", url);
 
+        // Pass the ticket as cookie
+        let cookie_header = format!("PVEAuthCookie={}", self.ticket);
+
         let response = self.client
             .get(&url)
+            .header("Cookie", cookie_header)
             .send()
             .await
             .context("Failed to send GET request")?;
