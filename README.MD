@@ -1,14 +1,14 @@
 # pvenom
 ### Proxmox Virtual Environment Node Observability Monitor
 
-![pvenom cli](https://github.com/francescogarbin/proxmox-pvenom/blob/main/docs/pvenom-as-table.png)
-
 > <b>Inspect ProxMox clusters without requesting API-keys to your sysadmin</b>
 >
 > *A little terminal friend for nosy sysadmins, ethical hackers, curious, and slightly caffeinated devops engineers.*  
 >
 > 
 > Written in Rust. CLI-first today, TUI-dreams for tomorrow.
+
+![pvenom cli](https://github.com/francescogarbin/proxmox-pvenom/blob/main/docs/pvenom-as-table.png)
 
 **What is this?**  
 `pvenom` is a tiny Linux command to inspect Proxmox clusters from the shell — no API tokens required, just user credentials to your Proxmox root/controller. It’s an early, rough-cut version: fast, scrappy, and useful for quick cluster pokes.
