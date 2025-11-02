@@ -1,6 +1,8 @@
 # pvenom
 ### Proxmox Virtual Environment Node Observability Monitor
 
+[docs/pvenom-as-table.png]
+
 > <b>Inspect ProxMox clusters without requesting API-keys to your sysadmin</b>
 >
 > *A little terminal friend for nosy sysadmins, ethical hackers, curious, and slightly caffeinated devops engineers.*  
