@@ -1,4 +1,7 @@
-// src/client.rs
+//! # client.rs
+//!
+//! The ProxMox client connecting via HTTP or HTTPS.
+
 use anyhow::{Context, Result};
 use reqwest::{Client, ClientBuilder};
 use serde_json::Value;
@@ -9,8 +12,8 @@ use crate::{vlog_debug, vlog_info, vlog_error};
 pub struct ProxmoxClient {
     base_url: String,
     client: Client,
-    ticket: String,           // PVEAuthCookie - usato in TUTTE le richieste
-    csrf_token: String,       // CSRFPreventionToken - usato solo in POST/PUT/DELETE
+    ticket: String,           // PVEAuthCookie passed in all requests
+    csrf_token: String,       // CSRFPreventionToken passed in POST/PUT/DELETE
 }
 
 impl ProxmoxClient {

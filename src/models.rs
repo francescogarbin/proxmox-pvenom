@@ -1,5 +1,19 @@
-// src/models.rs
+//! # models.rs
+//!
+//! Data structures used across the project
+
 use serde::{Deserialize, Serialize};
+
+/// Output format for command results
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OutputFormat {
+    /// Default human-readable format (current behavior)
+    Default,
+    /// CSV format with headers
+    Csv,
+    /// Table format with borders
+    Table,
+}
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ProxmoxResponse<T> {

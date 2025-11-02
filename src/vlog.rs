@@ -1,12 +1,12 @@
-/*
-src/vlog.rs
-Re-export per uso comodo
-pub use vlog_debug as debug;
-pub use vlog_info as info;
-pub use vlog_warn as warn;
-pub use vlog_error as error;
-pub use vlog_success as success;
- */
+//! # vlog.rs
+//!
+//! An agile log tool that avoid third-parties dependencies.
+//!
+//! pub use vlog_debug as debug;
+//! pub use vlog_info as info;
+//! pub use vlog_warn as warn;
+//! pub use vlog_error as error;
+//! pub use vlog_success as success;
 
 use std::sync::atomic::{AtomicU8, Ordering};
 
@@ -19,8 +19,8 @@ pub enum LogLevel {
     Error = 3,
 }
 
-static CURRENT_LEVEL: AtomicU8 = AtomicU8::new(LogLevel::Debug as u8);
-    
+static CURRENT_LEVEL: AtomicU8 = AtomicU8::new(LogLevel::Info as u8);
+
 pub fn set_level(level: LogLevel) {
     CURRENT_LEVEL.store(level as u8, Ordering::Relaxed);
 }
@@ -28,6 +28,13 @@ pub fn set_level(level: LogLevel) {
 pub fn should_log(level: LogLevel) -> bool {
     let current = CURRENT_LEVEL.load(Ordering::Relaxed);
     (level as u8) >= current
+}
+
+#[macro_export]
+macro_rules! vlog_set_level {
+    ($($arg:tt)*) => {
+        $crate::vlog::set_level($($arg)*);
+    };
 }
 
 #[macro_export]

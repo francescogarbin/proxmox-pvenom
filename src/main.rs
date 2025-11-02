@@ -1,3 +1,7 @@
+//! # main.rs
+//!
+//! Command line parsing and tool logic.
+
 use clap::Parser;
 use anyhow::{bail, Result};
 use std::env;
@@ -45,6 +49,14 @@ struct Cli {
     /// Enable verbose debug logging
     #[arg(short = 'v', long = "verbose")]
     verbose: bool,
+
+    /// Output format as CSV
+    #[arg(long = "as-csv", conflicts_with = "as_table")]
+    as_csv: bool,
+
+    /// Output format as table with borders
+    #[arg(long = "as-table", conflicts_with = "as_csv")]
+    as_table: bool,
 }
 
 /// Try to build a working base URL with protocol auto-detection
@@ -56,8 +68,7 @@ async fn resolve_base_url(controller: &str, username: &str, password: &str, inse
         return Ok(controller.to_string());
     }
 
-    // Try HTTPS first (the civilized way)
-    // Try HTTPS first (the civilized way)
+    // Try HTTPS first, assuming that production clusters have SSL certificates
     let https_url = format!("https://{}", controller);
     vlog_info!("Attempting HTTPS connection to {}...", controller);
 
@@ -66,7 +77,7 @@ async fn resolve_base_url(controller: &str, username: &str, password: &str, inse
         return Ok(https_url);
     }
 
-    // Fall back to HTTP (the homelab scrauso way 😅)
+    // Fall back to HTTPm providing support for homelabs with no public SSL certificates
     vlog_warn!("HTTPS connection failed, attempting HTTP fallback...");
     let http_url = format!("http://{}", controller);
 
@@ -75,7 +86,6 @@ async fn resolve_base_url(controller: &str, username: &str, password: &str, inse
         return Ok(http_url);
     }
 
-    // Socrate himself couldn't fix this with Kintsugi! 🏺💔
     vlog_error!("Could not connect to {} via HTTPS or HTTP", controller);
     bail!("Failed to establish connection to Proxmox cluster");
 }
@@ -118,6 +128,9 @@ async fn main() -> Result<()> {
         vlog::set_level(vlog::LogLevel::Debug);
         vlog_debug!("Verbose logging enabled");
     }
+    vlog_debug!("--controller: {}", &cli.controller);
+    vlog_debug!("--username: {}", &cli.username);
+    vlog_debug!("--password: {}", &cli.password);
 
     vlog_info!("Proxmox VE Node Observability Monitor v{}", env!("CARGO_PKG_VERSION"));
 
@@ -144,8 +157,17 @@ async fn main() -> Result<()> {
         }
     };
 
+    // Determine output format
+    let output_format = if cli.as_csv {
+        models::OutputFormat::Csv
+    } else if cli.as_table {
+        models::OutputFormat::Table
+    } else {
+        models::OutputFormat::Default
+    };
+
     // Execute the requested command
-    let commands = commands::Commands::new(client);
+    let commands = commands::Commands::new(client, output_format);
 
     let result = if cli.list_nodes {
         vlog_debug!("Executing: list all nodes");
