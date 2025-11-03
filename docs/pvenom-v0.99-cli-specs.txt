@@ -1,0 +1,270 @@
+=========================================================================
+== pvenom v.0.99 CLI specifications
+==
+== Francesco, on a rainy and cozy sunday evening
+=========================================================================
+
+pvenom
+  -c, --controller <CONTROLLER:PORT>    Proxmox VE IP address or hostame with PORT, es.controller.local:8006 
+  -u, --username <USERNAME>             Username for authentication  [default: root@pam]
+  -p, --password <PASSWORD>             Password for authentication [env: PVENOM_PASSWORD=]
+  -s, --secure yes | no                 Use no to skip SSL certificate check [default: yes]
+  -n, --node <NAME>                     Optional, inspect a single node and its guests
+  -f, --format json | csv | table       Output format as JSON, CSV, table [default: table]
+  -v, --verbose                         Print detailed logging
+  -h, --help                            Print help
+  -V, --version                         Print version
+
+Note: the output of the command is driven by option --format. The logging is silent,
+the commands logs its internals only when option --verbosed is set. Therefore
+all the output below, currently printed by the code, must be silenced unless --verbose.
+
+ℹ️  [INFO]  Proxmox VE Node Observability Monitor v0.1.0
+ℹ️  [INFO]  Connecting to Proxmox cluster at 192.168.54.10:8006...
+ℹ️  [INFO]  Attempting HTTPS connection to 192.168.54.10:8006...
+✅ [OK]    HTTPS connection established to 192.168.54.10:8006
+ℹ️  [INFO]  Authenticating to Proxmox API...
+✅ [OK]    Authentication successful!
+ℹ️  [INFO]  Fetching cluster nodes...
+
+The guiding principle is that the command is a first-class citizen of the Linux CLI
+and therefore only focuses on straight, unambiguous output that can be viewed
+on a terminal/console or easily redirected to a file for saving or to another
+terminal command such as the GNU coreutils for more complex pipelines.
+
+=========================================================================
+== Sample configuration for of a ProxMox cluster
+=========================================================================
+
+Below an essential configuration of a sample cluster, its aim is to provide
+basic info for usage samples of command pvenom as illustrated in the next sections.
+
+Controller hostname: ctrl.proxmox.local
+username: root@pam
+password: supersecret
+This sample cluster has two nodes, each hosting two guests, such as:  
+node_one[guest_one, guest_two], node_two[guest_three, guest_four]
+
+=========================================================================
+== Sample usages of command pvenom
+=========================================================================
+
+-------------------------------------------------------------------------
+| 1. Print a table with all the nodes
+-------------------------------------------------------------------------
+
+pvenom \
+	--controller ctrl.proxmox.local:8006 \
+	--username root@pam \
+	--password supersecret \
+	--secure yes \
+
+Output: the table we already have in the project, no changes. Skip all logging.
+
+-------------------------------------------------------------------------
+| 2. Print a table with all the guests of node_one, verbose output
+-------------------------------------------------------------------------
+
+pvenom \
+	-c ctrl.proxmox.local:8006 \
+	-u root@pam \
+	-p supersecret \
+	-s no \
+	-n node_one
+	-v 
+
+Output: the table we already have in the project, no changes. Activate logging.
+
+-------------------------------------------------------------------------
+| 3. List all nodes and prints results as pretty JSON on stdout
+-------------------------------------------------------------------------
+
+pvenom \
+	--controller ctrl.proxmox.local:8006 \
+	--username root@pam \
+	--password supersecret \
+	--secure yes \
+	--format json
+
+Output is prettyfied JSON, logging is silenced:
+
+{
+	root_controller: "node_one",
+	proxmox_version: "9.01",
+	nodes: [
+		{
+			name: "node_one",
+			cpu: "<number of CPUs>"
+			memory_gb: "<used/total>"
+			storage_gb: "<used/total>"
+			ipv4: "<IPv4 address>"
+			status: "<active or inactive>"
+		},
+		{
+			name: "node_two",
+			cpu: "<number of CPUs>"
+			memory_gb: "<used/total>"
+			storage_gb: "<used/total>"
+			ipv4: "<IPv4 address>"
+			status: "<active or inactive>"
+		}
+	]
+}
+
+-------------------------------------------------------------------------
+| 4. List all nodes and prints results as CSV
+-------------------------------------------------------------------------
+
+pvenom \
+	-c ctrl.proxmox.local:8006 \
+	-u root@pam \
+	-p supersecret \
+	-s no \
+	-f csv
+
+Output:
+
+"NAME", "STATUS", "CPU", "RAM (GB)", "HDD (GB)", "IPv4"
+"node_one","active","16","<used/total>","<used/total>","<IP address>"
+"node_two","inactive","22","<used/total>","<used/total>","<IP address>"
+
+-------------------------------------------------------------------------
+| 5. Inspect node "node_two" and its guests, print results as JSON
+| Note: option "--secure" omitted, defaults to "-- secure yes"
+-------------------------------------------------------------------------
+
+pvenom \
+	--controller ctrl.proxmox.local:8006 \
+	--username root@pam \
+	--password supersecret \
+	--node node_two
+	--format json
+
+Output is prettyfied JSON, logging is silenced:
+
+{
+	name: "node_two",
+	cpu: "<number of CPUs>"
+	memory_gb: "<used/total>"
+	storage_gb: "<used/total>"
+	ipv4: "<IPv4 address>"
+	status: "<active or inactive>"
+	is_root_controller: "<YES or NO>"
+	guests: [
+		{
+			name: "guest_three",
+			type: "<VM or LXC>",
+			cpu: "<number of CPUs>"
+			memory_gb: "<used/total>"
+			storage_gb: "<used/total>"
+			ipv4: "<IPv4 address>"
+			status: "<active or inactive>"
+		},
+		{
+			name: "guest_four",
+			type: "<VM or LXC>",
+			cpu: "<number of CPUs>"
+			memory_gb: "<used/total>"
+			storage_gb: "<used/total>"
+			ipv4: "<IPv4 address>"
+			status: "<active or inactive>"
+		}
+	]
+}
+
+-------------------------------------------------------------------------
+| 6. Inspect node "node_one" and its guests, print results as CSV
+| Note: to keep CSV consistent, only the guests are printed,
+| information about the node is omitted in this case.
+-------------------------------------------------------------------------
+
+pvenom \
+	-c ctrl.proxmox.local:8006 \
+	-u root@pam \
+	-p supersecret \
+	-n node_one
+	-s no
+	-f csv
+	--verbose
+
+Output:
+ℹ️ [INFO] Proxmox VE Node Observability Monitor v0.1.0
+ℹ️ [INFO] Connecting to Proxmox cluster at 192.168.54.10:8006...
+ℹ️ [INFO] Attempting HTTPS connection to 192.168.54.10:8006...
+✅ [OK]   HTTPS connection established to 192.168.54.10:8006
+ℹ️ [INFO] Authenticating to Proxmox API...
+✅ [OK]   Authentication successful!
+ℹ️ [INFO] Fetching node node_one as CSV...
+"NAME", "STATUS", "CPU", "RAM (GB)", "HDD (GB)", "IPv4"
+"guest_one","inactive","12","<used/total>","<used/total>","<IP address>"
+"guest_two","active","4","<used/total>","<used/total>","<IP address>"
+
+-------------------------------------------------------------------------
+| 7. Just like usage example #6 but log is silenced.
+-------------------------------------------------------------------------
+
+pvenom \
+	-c ctrl.proxmox.local:8006 \
+	-u root@pam \
+	-p supersecret \
+	-n node_two
+	-s no
+	-f csv
+
+Output:
+"NAME", "STATUS", "CPU", "RAM (GB)", "HDD (GB)", "IPv4"
+"guest_three","inactive","4","<used/total>","<used/total>","<IP address>"
+"guest_four","active","8","<used/total>","<used/total>","<IP address>"
+
+-------------------------------------------------------------------------
+| UNIX Pipeline Test - proof that pvenom integrates with the GNU coreutils
+-------------------------------------------------------------------------
+
+(Bash)
+$ ./target/release/pvenom -c 192.168.54.10:8006 -u root@pam -p tatooine --secure no --format csv | grep -v "^NODE" | cut -d',' -f1,3,5 | column -t -s','
+  ⎿  alderaan   online  16
+     corellia   online  16
+     tatooine   online  16
+     mandalore  online  16
+
+🎯 Pure GNU Magic! grep | cut | column - works great! Thompson&Ritchie would be proud!🎩
+
+-------------------------------------------------------------------------
+| Verbose Logging Test - test --verbose option and UNIX pipeline integration 🗣️💬
+-------------------------------------------------------------------------
+
+(Bash)
+$./target/release/pvenom -c 192.168.54.10:8006 -u root@pam -p tatooine --secure no --verbose 2>&1
+  ⎿  🔍 [DEBUG] Verbose logging enabled         
+     🔍 [DEBUG] --controller: 192.168.54.10:8006
+     🔍 [DEBUG] --username: root@pam
+     … +45 lines (ctrl+o to expand)
+
+🎯 Test passed - Output as expected!
+
+-------------------------------------------------------------------------
+| Reference - the previous version of the command (too cumbersome!):
+-------------------------------------------------------------------------
+
+$ ./pvenom --help
+Monitor and observe Proxmox VE cluster nodes, VMs and LXC containers
+
+Usage: pvenom [OPTIONS] --controller <CONTROLLER> --password <PASSWORD>
+
+Options:
+  -c, --controller <CONTROLLER>  Proxmox cluster controller IP or hostname
+  -u, --username <USERNAME>      Username for authentication (e.g., root@pam) [default: root@pam]
+  -p, --password <PASSWORD>      Password for authentication [env: PVENOM_PASSWORD=]
+      --list-nodes               List all nodes in the cluster
+  -n, --node <NODE>              Specify node name for operations
+  -l, --list                     List VMs and LXCs on the specified node
+      --insecure                 Skip SSL certificate verification (use with caution!)
+  -v, --verbose                  Enable verbose debug logging
+      --as-csv                   Output format as CSV
+      --as-table                 Output format as table with borders
+      --as-json <AS_JSON>        Save raw JSON response to file
+  -h, --help                     Print help
+  -V, --version                  Print version
+
+
+

@@ -23,3 +23,7 @@ Cargo.lock
 .idea
 .idea/vcs.xml
 .idea/proxmox-pvenom.iml
+
+# Temp folder for local assets and snippets
+tmp
+

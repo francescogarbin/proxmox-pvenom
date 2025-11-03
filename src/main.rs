@@ -30,38 +30,45 @@ struct Cli {
     #[arg(short = 'p', long = "password", env = "PVENOM_PASSWORD")]
     password: String,
 
-    /// List all nodes in the cluster
-    #[arg(long = "list-nodes", conflicts_with = "node")]
-    list_nodes: bool,
+    /// Use SSL certificate verification (yes or no)
+    #[arg(short = 's', long = "secure", default_value = "yes", value_parser = parse_yes_no, num_args = 1)]
+    secure: bool,
 
-    /// Specify node name for operations
+    /// Specify node name for operations (optional - lists all nodes if omitted)
     #[arg(short = 'n', long = "node")]
     node: Option<String>,
 
-    /// List VMs and LXCs on the specified node
-    #[arg(short = 'l', long = "list", requires = "node")]
-    list: bool,
-
-    /// Skip SSL certificate verification (use with caution!)
-    #[arg(long = "insecure")]
-    insecure: bool,
+    /// Output format: json, csv, or table
+    #[arg(short = 'f', long = "format", default_value = "table", value_parser = parse_format)]
+    format: models::OutputFormat,
 
     /// Enable verbose debug logging
     #[arg(short = 'v', long = "verbose")]
     verbose: bool,
+}
 
-    /// Output format as CSV
-    #[arg(long = "as-csv", conflicts_with = "as_table")]
-    as_csv: bool,
+/// Parse yes/no values for --secure flag
+fn parse_yes_no(s: &str) -> Result<bool, String> {
+    match s.to_lowercase().as_str() {
+        "yes" | "y" => Ok(true),
+        "no" | "n" => Ok(false),
+        _ => Err(format!("Invalid value '{}'. Expected 'yes' or 'no'", s)),
+    }
+}
 
-    /// Output format as table with borders
-    #[arg(long = "as-table", conflicts_with = "as_csv")]
-    as_table: bool,
+/// Parse format values for --format flag
+fn parse_format(s: &str) -> Result<models::OutputFormat, String> {
+    match s.to_lowercase().as_str() {
+        "json" => Ok(models::OutputFormat::Json),
+        "csv" => Ok(models::OutputFormat::Csv),
+        "table" => Ok(models::OutputFormat::Table),
+        _ => Err(format!("Invalid format '{}'. Expected 'json', 'csv', or 'table'", s)),
+    }
 }
 
 /// Try to build a working base URL with protocol auto-detection
 /// Tries HTTPS first, falls back to HTTP if needed
-async fn resolve_base_url(controller: &str, username: &str, password: &str, insecure: bool) -> Result<String> {
+async fn resolve_base_url(controller: &str, username: &str, password: &str, secure: bool) -> Result<String> {
     // If user already specified protocol, use it as-is
     if controller.starts_with("http://") || controller.starts_with("https://") {
         vlog_debug!("Protocol already specified in controller address: {}", controller);
@@ -72,16 +79,16 @@ async fn resolve_base_url(controller: &str, username: &str, password: &str, inse
     let https_url = format!("https://{}", controller);
     vlog_info!("Attempting HTTPS connection to {}...", controller);
 
-    if try_connection(&https_url, username, password, insecure).await.is_ok() {
+    if try_connection(&https_url, username, password, secure).await.is_ok() {
         vlog_success!("HTTPS connection established to {}", controller);
         return Ok(https_url);
     }
 
-    // Fall back to HTTPm providing support for homelabs with no public SSL certificates
+    // Fall back to HTTP, providing support for homelabs with no public SSL certificates
     vlog_warn!("HTTPS connection failed, attempting HTTP fallback...");
     let http_url = format!("http://{}", controller);
 
-    if try_connection(&http_url, username, password, false).await.is_ok() {
+    if try_connection(&http_url, username, password, secure).await.is_ok() {
         vlog_warn!("HTTP connection successful - consider using HTTPS in production!");
         return Ok(http_url);
     }
@@ -91,12 +98,13 @@ async fn resolve_base_url(controller: &str, username: &str, password: &str, inse
 }
 
 /// Quick connection test to check if the endpoint is reachable
-async fn try_connection(base_url: &str, username: &str, password: &str, insecure: bool) -> Result<()> {
+async fn try_connection(base_url: &str, username: &str, password: &str, secure: bool) -> Result<()> {
     vlog_debug!("Testing connection to {}", base_url);
 
     // Build a minimal reqwest client just for testing
+    // When secure=true, verify certs; when secure=false, skip verification (danger!)
     let client = reqwest::Client::builder()
-        .danger_accept_invalid_certs(insecure)
+        .danger_accept_invalid_certs(!secure)
         .timeout(std::time::Duration::from_secs(5))
         .build()?;
 
@@ -136,7 +144,7 @@ async fn main() -> Result<()> {
 
     // Resolve base URL with auto-detection (hidden ugliness under Persian carpets!)
     vlog_info!("Connecting to Proxmox cluster at {}...", cli.controller);
-    let base_url = match resolve_base_url(&cli.controller, &cli.username, &cli.password, cli.insecure).await {
+    let base_url = match resolve_base_url(&cli.controller, &cli.username, &cli.password, cli.secure).await {
         Ok(url) => url,
         Err(e) => {
             vlog_error!("Connection failed: {}", e);
@@ -146,7 +154,7 @@ async fn main() -> Result<()> {
 
     // Create Proxmox client and authenticate
     vlog_info!("Authenticating to Proxmox API...");
-    let client = match ProxmoxClient::new(&base_url, &cli.username, &cli.password, cli.insecure).await {
+    let client = match ProxmoxClient::new(&base_url, &cli.username, &cli.password, cli.secure).await {
         Ok(c) => {
             vlog_success!("Authentication successful!");
             c
@@ -157,33 +165,17 @@ async fn main() -> Result<()> {
         }
     };
 
-    // Determine output format
-    let output_format = if cli.as_csv {
-        models::OutputFormat::Csv
-    } else if cli.as_table {
-        models::OutputFormat::Table
-    } else {
-        models::OutputFormat::Default
-    };
-
     // Execute the requested command
-    let commands = commands::Commands::new(client, output_format);
+    let commands = commands::Commands::new(client, cli.format);
 
-    let result = if cli.list_nodes {
+    let result = if let Some(node_name) = cli.node {
+        // Inspect specific node and list its guests
+        vlog_info!("Executing: show info for node '{}' with guests", node_name);
+        commands.show_node_info(&node_name).await
+    } else {
+        // Default behavior: list all nodes
         vlog_debug!("Executing: list all nodes");
         commands.list_nodes().await
-    } else if let Some(node_name) = cli.node {
-        if cli.list {
-            vlog_info!("Executing: list guests on node '{}'", node_name);
-            commands.list_node_guests(&node_name).await
-        } else {
-            vlog_info!("Executing: show info for node '{}'", node_name);
-            commands.show_node_info(&node_name).await
-        }
-    } else {
-        // No command specified, show help
-        vlog_error!("No command specified. Use --help for usage information.");
-        std::process::exit(1);
     };
 
     // Handle command execution result

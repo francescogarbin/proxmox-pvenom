@@ -7,11 +7,11 @@ use serde::{Deserialize, Serialize};
 /// Output format for command results
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutputFormat {
-    /// Default human-readable format (current behavior)
-    Default,
+    /// JSON format (prettified)
+    Json,
     /// CSV format with headers
     Csv,
-    /// Table format with borders
+    /// Table format with borders (default)
     Table,
 }
 
@@ -32,6 +32,8 @@ pub struct AuthTicket {
 pub struct Node {
     pub node: String,
     pub status: String,
+    #[serde(default)]
+    pub ip: Option<String>,
     #[serde(default)]
     pub cpu: Option<f64>,
     #[serde(default)]
@@ -55,6 +57,8 @@ pub struct VM {
     #[serde(default)]
     pub status: String,
     #[serde(default)]
+    pub ip: Option<String>,
+    #[serde(default)]
     pub cpus: Option<u32>,
     #[serde(default)]
     pub maxmem: Option<u64>,
@@ -70,6 +74,8 @@ pub struct LXC {
     pub name: String,
     #[serde(default)]
     pub status: String,
+    #[serde(default)]
+    pub ip: Option<String>,
     #[serde(default)]
     pub cpus: Option<u32>,
     #[serde(default)]
@@ -114,4 +120,53 @@ impl Guest {
             Guest::LXC(_) => "LXC",
         }
     }
+}
+
+// ============================================================================
+// Custom JSON output structures (for --format json)
+// ============================================================================
+
+/// JSON output structure for listing all nodes
+#[derive(Debug, Serialize)]
+pub struct NodeListOutput {
+    pub root_controller: String,
+    pub proxmox_version: String,
+    pub nodes: Vec<NodeJsonInfo>,
+}
+
+/// Node information in JSON format
+#[derive(Debug, Serialize)]
+pub struct NodeJsonInfo {
+    pub name: String,
+    pub cpu: String,
+    pub memory_gb: String,
+    pub storage_gb: String,
+    pub ipv4: String,
+    pub status: String,
+}
+
+/// JSON output structure for inspecting a single node with guests
+#[derive(Debug, Serialize)]
+pub struct NodeDetailOutput {
+    pub name: String,
+    pub cpu: String,
+    pub memory_gb: String,
+    pub storage_gb: String,
+    pub ipv4: String,
+    pub status: String,
+    pub is_root_controller: String,
+    pub guests: Vec<GuestJsonInfo>,
+}
+
+/// Guest information in JSON format
+#[derive(Debug, Serialize)]
+pub struct GuestJsonInfo {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub guest_type: String,
+    pub cpu: String,
+    pub memory_gb: String,
+    pub storage_gb: String,
+    pub ipv4: String,
+    pub status: String,
 }

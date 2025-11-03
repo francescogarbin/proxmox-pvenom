@@ -17,9 +17,10 @@ pub enum LogLevel {
     Info = 1,
     Warn = 2,
     Error = 3,
+    Silent = 4,  // Higher than Error, suppresses all logging
 }
 
-static CURRENT_LEVEL: AtomicU8 = AtomicU8::new(LogLevel::Info as u8);
+static CURRENT_LEVEL: AtomicU8 = AtomicU8::new(LogLevel::Silent as u8);
 
 pub fn set_level(level: LogLevel) {
     CURRENT_LEVEL.store(level as u8, Ordering::Relaxed);
@@ -76,6 +77,8 @@ macro_rules! vlog_error {
 #[macro_export]
 macro_rules! vlog_success {
     ($($arg:tt)*) => {
-        println!("✅ [OK]    {}", format!($($arg)*));
+        if $crate::vlog::should_log($crate::vlog::LogLevel::Info) {
+            println!("✅ [OK]    {}", format!($($arg)*));
+        }
     };
 }

@@ -1,0 +1,35 @@
+{
+  "lxc": {
+    "data": [
+      {
+        "cpu": 1.60329015186814e-6,
+        "cpus": 14,
+        "disk": 9195524096,
+        "diskread": 9910140928,
+        "diskwrite": 151437312,
+        "maxdisk": 126227120128,
+        "maxmem": 32212254720,
+        "maxswap": 2147483648,
+        "mem": 294055936,
+        "name": "beskar",
+        "netin": 5503900806,
+        "netout": 1246679,
+        "pid": 538323,
+        "pressurecpufull": "0.00",
+        "pressurecpusome": "0.00",
+        "pressureiofull": "0.00",
+        "pressureiosome": "0.00",
+        "pressurememoryfull": "0.00",
+        "pressurememorysome": "0.00",
+        "status": "running",
+        "swap": 0,
+        "type": "lxc",
+        "uptime": 1571193,
+        "vmid": 100
+      }
+    ]
+  },
+  "qemu": {
+    "data": []
+  }
+}
