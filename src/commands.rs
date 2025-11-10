@@ -1,19 +1,38 @@
+// proxmox-pvenom: inspect and operate your ProxMox clusters from
+// the CLI with no API keys.
+// Copyright (C) 2025 Francesco Garbin
+//
+// This library is free software; you can redistribute it and/or
+// modify it under the terms of the GNU Lesser General Public
+// License as published by the Free Software Foundation; either
+// version 2.1 of the License, or (at your option) any later version.
+//
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+// Lesser General Public License for more details.
+// You should have received a copy of the GNU Lesser General Public
+// License along with this library; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301
+// USA
+
 //! # commands.rs
 //!
 //! CLI commands to inspect and manipulate ProxMox cluster nodes via VE.
 //!
 //! Output stile `--list-nodes`:
-//! 
+//!
 //! NODE,STATUS,CPU_PERCENT,CPU_CORES,MEM_GB,MEM_MAX_GB,DISK_GB,DISK_MAX_GB,UPTIME_DAYS
 //! tatooine,online,15.3,8,12.45,32.00,45.23,500.00,15.2
 //! hoth,online,8.7,4,6.22,16.00,23.11,250.00,10.5
 //!
 //! Output stile `--node mynode --list`:
-//! 
+//!
 //! mynode:
 //! ├── [100] database-prod (VM) - status:running, cpus:4, ram:8.0GB
 //! ├── [101] web-frontend (LXC) - status:running, cpus:2, ram:2.0GB
 //! └── [102] backup-server (VM) - status:stopped, cpus:2, ram:4.0GB
+//!
 
 use anyhow::Result;
 use crate::client::ProxmoxClient;
